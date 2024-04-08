@@ -7,7 +7,7 @@ class Trader:
     def __init__(self) -> None:
         # Risk factor for each product, pre-set
         self.gamma = {
-            "AMETHYSTS" : 10,
+            "AMETHYSTS" : 1,
             "STARFRUIT" : 10,
             "PRODUCT1"  : 10,
             "PRODUCT2"  : 10,
@@ -19,10 +19,10 @@ class Trader:
         # The initial trade price
         # TODO: What should we set
         self.last_avg_trade_price = {
-            "AMETHYSTS" : 1,
-            "STARFRUIT" : 1,
-            "PRODUCT1"  : 1,
-            "PRODUCT2"  : 1,
+            "AMETHYSTS" : 0,
+            "STARFRUIT" : 0,
+            "PRODUCT1"  : 0,
+            "PRODUCT2"  : 0,
         }
 
         # TODO: What is this?
@@ -93,9 +93,9 @@ class Trader:
         params["s"] = self.mid_price(order_book)
 
         # Market volatility(σ)
-        trade_data = trading_state.market_trades[product_name]
+        trade_data = trading_state.market_trades[product_name] if product_name in trading_state.market_trades else []
         cur_avg_trade_price = self.avg_trade_price(trade_data)
-        R_cur = cur_avg_trade_price / self.last_avg_trade_price[product_name]
+        R_cur = (cur_avg_trade_price / self.last_avg_trade_price[product_name]) if self.last_avg_trade_price[product_name] > 0 else 1
         self.past_trade_ratio.append(R_cur)
 
         params["sigma"] = np.std(self.past_trade_ratio)
@@ -112,12 +112,13 @@ class Trader:
 
         # Order Book Depth (κ)
         time_diff = trading_state.timestamp - self.last_timestamp
-        if time_diff == 0:
-            time_diff += 1 # TODO: What should we do?
-        params["kappa"] = self.total_volumn(order_book) / time_diff
+        if time_diff == 0: # TODO: What should we do?
+            params["kappa"] = 1
+        else:
+            params["kappa"] = self.total_volumn(order_book) / time_diff
 
         # Inventory quantity of base asset(positive/negative for long/short position) (q)
-        params["q"] = trading_state.position[product_name]
+        params["q"] = trading_state.position[product_name] if product_name in trading_state.position else 0
 
         # Update macros
         self.last_timestamp = trading_state.timestamp
@@ -143,12 +144,13 @@ class Trader:
         delta = (gamma * sigma * sigma + 2 * np.log(1 + gamma / kappa) / gamma) / 2 # * (T - t) # Not used for now
 
         # Trade Price
-        bid_price = r - delta
-        ask_price = r + delta
+        bid_price = int(r - delta)
+        ask_price = int(r + delta)
 
         # Trade Volumn
-        bid_volume = self.position_limit[product_name] - trading_state.position[product_name]
-        ask_volume = trading_state.position[product_name] + self.position_limit[product_name]
+        position = trading_state.position[product_name] if product_name in trading_state.position else 0
+        bid_volume = self.position_limit[product_name] - position
+        ask_volume = position + self.position_limit[product_name]
 
         trades.append(Order(product_name, bid_price, bid_volume))
         trades.append(Order(product_name, ask_price, -ask_volume))
