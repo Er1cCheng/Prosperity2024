@@ -8,9 +8,9 @@ class Trader:
         # Risk factor for each product, pre-set
         self.gamma = {
             "AMETHYSTS" : 1,
-            "STARFRUIT" : 10,
-            "PRODUCT1"  : 10,
-            "PRODUCT2"  : 10,
+            "STARFRUIT" : 1,
+            "PRODUCT1"  : 5,
+            "PRODUCT2"  : 5,
         }
 
         # Used to store the past trade price ratio to the previous timestamp => calculate Market volatility
@@ -25,8 +25,7 @@ class Trader:
             "PRODUCT2"  : 0,
         }
 
-        # TODO: What is this?
-        self.max_timestamp = 1000000
+        self.max_timestamp = 200000
 
         # Initial last timestamp
         self.last_timestamp = 0
@@ -64,7 +63,7 @@ class Trader:
         total_count = 0
 
         for trade in market_trade:
-            total_price += trade.price
+            total_price += trade.price * trade.quantity
             total_count += trade.quantity
 
         if total_count == 0:
@@ -99,6 +98,7 @@ class Trader:
         self.past_trade_ratio.append(R_cur)
 
         params["sigma"] = np.std(self.past_trade_ratio)
+        print(params["sigma"])
         self.last_avg_trade_price[product_name] = cur_avg_trade_price
 
         # Normalized closing time(T)
@@ -122,7 +122,6 @@ class Trader:
 
         # Update macros
         self.last_timestamp = trading_state.timestamp
-
         return params
     
     def deploy_AS(self, AS_params, product_name, trading_state: TradingState):
@@ -138,10 +137,10 @@ class Trader:
         q = AS_params["q"]
 
         # Reservation Price
-        r = s - q * gamma * sigma * sigma # * (T - t) # Not used for now
+        r = s - q * gamma * sigma * sigma * (T - t)
 
         # Optimal bid/ask spread
-        delta = (gamma * sigma * sigma + 2 * np.log(1 + gamma / kappa) / gamma) / 2 # * (T - t) # Not used for now
+        delta = (gamma * sigma * sigma * (T - t) + 2 * np.log(1 + gamma / kappa) / gamma) / 2
 
         # Trade Price
         bid_price = int(r - delta)
@@ -154,11 +153,30 @@ class Trader:
 
         trades.append(Order(product_name, bid_price, bid_volume))
         trades.append(Order(product_name, ask_price, -ask_volume))
+        print("For product ", product_name, "r and delta is", r, delta)
         return trades
     
+    def print_state(self, state: TradingState):
+        print("----- STATE -----")
+        print("Time:", state.timestamp)
+        print("Books:")
+        for product in state.order_depths:
+            print(" Product:", product)
+            print("     BUY:")
+            for buy_price in state.order_depths[product].buy_orders:
+                print("         price -- volume:", buy_price, state.order_depths[product].buy_orders[buy_price])
+            print("     SELL:")
+            for sell_price in state.order_depths[product].sell_orders:
+                print("         price -- volume:", sell_price, state.order_depths[product].sell_orders[sell_price])
+
+        print("Position:")
+        for product in state.position:
+            print(" Product --  position:", product, state.position[product])
+        
+        print("\n")
+
     def run(self, state: TradingState):
-        # print("traderData: " + state.traderData)
-        # print("Observations: " + str(state.observations))
+        self.print_state(state)
         result = {}
 
         for product in state.order_depths:
