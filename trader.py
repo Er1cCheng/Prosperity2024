@@ -98,7 +98,7 @@ class Trader:
         self.past_trade_ratio.append(R_cur)
 
         params["sigma"] = np.std(self.past_trade_ratio)
-        print(params["sigma"])
+        # print(params["sigma"])
         self.last_avg_trade_price[product_name] = cur_avg_trade_price
 
         # Normalized closing time(T)
@@ -153,7 +153,7 @@ class Trader:
 
         trades.append(Order(product_name, bid_price, bid_volume))
         trades.append(Order(product_name, ask_price, -ask_volume))
-        print("For product ", product_name, "r and delta is", r, delta)
+        # print("For product ", product_name, "r and delta is", r, delta)
         return trades
     
     def print_state(self, state: TradingState):
@@ -176,7 +176,7 @@ class Trader:
         print("\n")
 
     def run(self, state: TradingState):
-        self.print_state(state)
+        # self.print_state(state)
         result = {}
 
         for product in state.order_depths:
