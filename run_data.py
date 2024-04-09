@@ -8,6 +8,8 @@ data_folder = "round-1-island-data-bottle"
 market_files = ["prices_round_1_day_0.csv"]
 trade_files = ["trades_round_1_day_0_nn.csv"]
 
+analysis = False
+
 import csv
 import matplotlib.pyplot as plt
 
@@ -63,6 +65,8 @@ if __name__ == "__main__":
     trading_states = []
 
     timestamp_base = 0
+    max_price = {}
+    min_price = {}
 
     # Retrieve data from files
     for market_file in market_files:
@@ -85,6 +89,17 @@ if __name__ == "__main__":
                 # Extract data
                 timestamp = int(data[1]) + timestamp_base
                 product = data[2]
+                product_price = float(data[15])
+
+                if product not in max_price:
+                    max_price[product] = product_price
+                else:
+                    max_price[product] = max(product_price, max_price[product])
+                
+                if product not in min_price:
+                    min_price[product] = product_price
+                else:
+                    min_price[product] = min(product_price, min_price[product])
                 
                 bid_book = {}
                 for i in [3,5,7]:
@@ -120,6 +135,9 @@ if __name__ == "__main__":
                 #     print("------")
         
         timestamp_base = market_data[-1][0]
+
+    if analysis:
+        print("Max price", max_price, "Min price", min_price)
 
     timestamp_base = 0
     for trade_file in trade_files:
@@ -185,6 +203,9 @@ if __name__ == "__main__":
     #     print_state(ts)
 
     # Run our trade and do order matching
+    if analysis:
+        exit()
+    
     position = {}
     money = 0
     assets = []
